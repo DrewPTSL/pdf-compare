@@ -1,0 +1,1099 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Redline — Site Plan Comparator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+  :root {
+    box-sizing: border-box;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+
+    --paper: #F6F4ED;
+    --paper-raised: #FFFFFF;
+    --ink: #23262B;
+    --ink-soft: #666B62;
+    --line: #DCD8C9;
+    --blueprint: #2C5E8A;
+    --blueprint-dim: #7CA0BE;
+    --redline: #B23B2E;
+    --redline-dim: #CE8177;
+    --accent: #B4791C;
+    --focus: #2C5E8A;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #1A1C19;
+      --paper-raised: #232622;
+      --ink: #ECE8DC;
+      --ink-soft: #A6A398;
+      --line: #3A3D37;
+      --blueprint: #86B4E0;
+      --blueprint-dim: #52789D;
+      --redline: #E2786B;
+      --redline-dim: #A6584C;
+      --accent: #E3A94A;
+      --focus: #86B4E0;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #1A1C19;
+    --paper-raised: #232622;
+    --ink: #ECE8DC;
+    --ink-soft: #A6A398;
+    --line: #3A3D37;
+    --blueprint: #86B4E0;
+    --blueprint-dim: #52789D;
+    --redline: #E2786B;
+    --redline-dim: #A6584C;
+    --accent: #E3A94A;
+    --focus: #86B4E0;
+  }
+  html { scroll-padding-top: env(safe-area-inset-top, 0px); }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: "IBM Plex Sans", system-ui, sans-serif;
+    height: 100%;
+    -webkit-font-smoothing: antialiased;
+  }
+  html, body { height: 100%; }
+  .mono { font-family: "IBM Plex Mono", ui-monospace, monospace; }
+
+  #app {
+    display: grid;
+    grid-template-rows: auto 1fr;
+    height: 100vh;
+    height: 100dvh;
+  }
+
+  header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    height: 52px;
+    padding: 0 20px;
+    margin-top: env(safe-area-inset-top, 0px);
+    border-bottom: 1px solid var(--line);
+    background: var(--paper-raised);
+  }
+  header h1 {
+    font-size: 17px;
+    margin: 0;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+  }
+  header .tag {
+    font-size: 11.5px;
+    color: var(--ink-soft);
+    font-family: "IBM Plex Mono", monospace;
+  }
+  header .spacer { flex: 1; }
+  #controlsToggle {
+    display: none;
+  }
+
+  main.layout {
+    display: grid;
+    grid-template-columns: 300px 1fr;
+    min-height: 0;
+  }
+
+  aside {
+    border-right: 1px solid var(--line);
+    background: var(--paper-raised);
+    padding: 16px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  section.group {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  section.group > h2 {
+    font-size: 11px;
+    text-transform: none;
+    letter-spacing: 0.03em;
+    margin: 0;
+    color: var(--ink-soft);
+    font-family: "IBM Plex Mono", monospace;
+    border-bottom: 1px solid var(--line);
+    padding-bottom: 6px;
+  }
+
+  .dropzone {
+    border: 1.5px dashed var(--line);
+    border-radius: 3px;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    cursor: pointer;
+    transition: border-color .15s ease, background .15s ease;
+    position: relative;
+  }
+  .dropzone:hover, .dropzone.drag {
+    border-color: var(--focus);
+    background: color-mix(in srgb, var(--focus) 6%, transparent);
+  }
+  .dropzone input[type=file] {
+    position: absolute; inset: 0; opacity: 0; cursor: pointer;
+  }
+  .dropzone .swatch {
+    width: 10px; height: 10px; border-radius: 2px; flex: none;
+  }
+  .dropzone .zlabel {
+    font-size: 12.5px; font-weight: 600; display: flex; align-items: center; gap: 6px;
+  }
+  .dropzone .fname {
+    font-size: 11.5px; color: var(--ink-soft); font-family: "IBM Plex Mono", monospace;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .dropzone .pagerow {
+    display: flex; align-items: center; gap: 6px; margin-top: 2px;
+  }
+  .dropzone select {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 11.5px;
+    background: var(--paper);
+    color: var(--ink);
+    border: 1px solid var(--line);
+    border-radius: 2px;
+    padding: 3px 4px;
+    position: relative;
+    z-index: 2;
+  }
+
+  .seg {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 6px;
+  }
+  .seg button {
+    font-family: "IBM Plex Sans", sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 8px 6px;
+    border: 1px solid var(--line);
+    background: var(--paper);
+    color: var(--ink-soft);
+    border-radius: 3px;
+    cursor: pointer;
+    transition: all .12s ease;
+  }
+  .seg button.active {
+    border-color: var(--focus);
+    color: var(--ink);
+    background: color-mix(in srgb, var(--focus) 12%, var(--paper));
+  }
+  .seg button:hover { color: var(--ink); }
+  .seg button:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 1px;
+  }
+
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .field .flabel {
+    display: flex; justify-content: space-between;
+    font-size: 11.5px;
+    color: var(--ink-soft);
+  }
+  .field .flabel b {
+    color: var(--ink);
+    font-family: "IBM Plex Mono", monospace;
+    font-weight: 500;
+  }
+  input[type=range] {
+    width: 100%;
+    accent-color: var(--focus);
+  }
+
+  .btnrow { display: flex; gap: 8px; flex-wrap: wrap; }
+  button.ghost {
+    font-family: "IBM Plex Sans", sans-serif;
+    font-size: 12px;
+    padding: 7px 10px;
+    border: 1px solid var(--line);
+    background: var(--paper);
+    color: var(--ink);
+    border-radius: 3px;
+    cursor: pointer;
+  }
+  button.ghost:hover { border-color: var(--focus); }
+  button.primary {
+    font-family: "IBM Plex Sans", sans-serif;
+    font-size: 12.5px;
+    font-weight: 600;
+    padding: 9px 12px;
+    border: 1px solid var(--accent);
+    background: var(--accent);
+    color: #fff;
+    border-radius: 3px;
+    cursor: pointer;
+  }
+  button.primary:disabled {
+    opacity: .4; cursor: not-allowed;
+  }
+  button:disabled { opacity: .45; cursor: not-allowed; }
+
+  .hint {
+    font-size: 11px;
+    color: var(--ink-soft);
+    line-height: 1.5;
+  }
+
+  /* MAIN VIEWPORT */
+  main.viewer {
+    position: relative;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
+  .toolbar {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 0 16px;
+    border-bottom: 1px solid var(--line);
+    background: var(--paper-raised);
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    height: 48px;
+  }
+  .legend { display: flex; gap: 14px; align-items: center; font-size: 11.5px; color: var(--ink-soft); }
+  .legend .dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; margin-right: 5px; vertical-align: -1px; }
+  .zoomctl { display: flex; align-items: center; gap: 4px; margin-left: auto; }
+  .zoomctl button { width: 26px; height: 26px; border: 1px solid var(--line); background: var(--paper); color: var(--ink); border-radius: 3px; cursor: pointer; font-size: 14px; line-height: 1;}
+  .zoomctl .pct { font-family: "IBM Plex Mono", monospace; font-size: 11.5px; color: var(--ink-soft); width: 44px; text-align: center; }
+
+  .stagewrap {
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+    position: relative;
+    background:
+      linear-gradient(var(--line) 1px, transparent 1px) 0 0/24px 24px,
+      linear-gradient(90deg, var(--line) 1px, transparent 1px) 0 0/24px 24px,
+      var(--paper);
+    background-blend-mode: normal;
+    cursor: grab;
+  }
+  .stagewrap.panning { cursor: grabbing; }
+  .stagewrap.magnify-on { cursor: crosshair; }
+  .stagewrap.dim-grid { background-image: none; }
+
+  #stage {
+    position: absolute;
+    top: 0; left: 0;
+    transform-origin: 0 0;
+    display: flex;
+  }
+  #stage canvas {
+    display: block;
+    box-shadow: 0 1px 3px rgba(0,0,0,.18);
+    background: #fff;
+  }
+
+  .loupe {
+    position: absolute;
+    width: 200px; height: 200px;
+    border-radius: 50%;
+    border: 3px solid var(--accent);
+    box-shadow: 0 4px 18px rgba(0,0,0,.35), inset 0 0 0 1px rgba(255,255,255,.5);
+    pointer-events: none;
+    display: none;
+    background-repeat: no-repeat;
+    background-color: #fff;
+    z-index: 20;
+  }
+
+  /* empty state */
+  .empty {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 10px; padding: 30px; text-align: center;
+    color: var(--ink-soft);
+  }
+  .empty svg { width: 56px; height: 56px; stroke: var(--ink-soft); opacity: .7; }
+  .empty h3 { margin: 0; color: var(--ink); font-size: 15px; font-weight: 600; }
+  .empty p { margin: 0; font-size: 12.5px; max-width: 320px; line-height: 1.6; }
+
+  /* side by side */
+  .sidebyside { display: flex; gap: 16px; padding: 20px; }
+  .sidebyside figure { margin: 0; display: flex; flex-direction: column; gap: 6px; align-items: center; }
+  .sidebyside figcaption { font-size: 11px; font-family: "IBM Plex Mono", monospace; color: var(--ink-soft); }
+
+  /* swipe */
+  .swipewrap { position: relative; }
+  .swipe-top { position: absolute; top: 0; left: 0; }
+  .swipe-handle {
+    position: absolute; top: 0; bottom: 0; width: 2px;
+    background: var(--accent);
+    cursor: ew-resize;
+    z-index: 5;
+  }
+  .swipe-handle::after {
+    content: '';
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
+    width: 26px; height: 26px; border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 1px 4px rgba(0,0,0,.3);
+  }
+  .swipe-handle::before {
+    content: '⇔';
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
+    color: #fff; font-size: 13px; z-index: 6;
+  }
+
+  .blinkbtn {
+    display: flex; align-items: center; gap: 8px;
+  }
+
+  footer.mobilebar { display: none; }
+
+  .modal-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,.45);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 50;
+    padding: 20px;
+  }
+  .modal-card {
+    background: var(--paper-raised);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 22px 24px;
+    max-width: 480px;
+    width: 100%;
+    box-shadow: 0 12px 40px rgba(0,0,0,.25);
+  }
+  .modal-card h3 {
+    margin: 0 0 14px;
+    font-size: 15px;
+    font-weight: 700;
+  }
+  .shortcut-list {
+    margin: 0 0 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+  }
+  .shortcut-list > div {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+  }
+  .shortcut-list dt {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--ink);
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    padding: 2px 7px;
+    flex: none;
+    min-width: 34px;
+    text-align: center;
+  }
+  .shortcut-list dd {
+    margin: 0;
+    font-size: 12.5px;
+    color: var(--ink-soft);
+  }
+
+  @media (max-width: 880px) {
+    main.layout { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
+    aside {
+      border-right: none;
+      border-bottom: 1px solid var(--line);
+      max-height: 46vh;
+    }
+    .sidebyside { flex-direction: column; }
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <h1>Redline</h1>
+    <span class="tag">site plan comparator</span>
+    <span class="spacer"></span>
+    <button id="downloadBtn" class="ghost" style="display:none;">Export diff PDF</button>
+  </header>
+
+  <main class="layout">
+    <aside>
+      <section class="group">
+        <h2>Plans</h2>
+        <label class="dropzone" id="dropA">
+          <input type="file" accept="application/pdf" id="fileA">
+          <span class="zlabel"><span class="swatch" style="background:var(--redline)"></span>Previous</span>
+          <span class="fname" id="nameA">Drop or choose PDF</span>
+          <span class="pagerow" id="pagerowA" style="display:none;">
+            <span class="hint mono">page</span>
+            <select id="pageA"></select>
+          </span>
+        </label>
+        <label class="dropzone" id="dropB">
+          <input type="file" accept="application/pdf" id="fileB">
+          <span class="zlabel"><span class="swatch" style="background:var(--blueprint)"></span>Current</span>
+          <span class="fname" id="nameB">Drop or choose PDF</span>
+          <span class="pagerow" id="pagerowB" style="display:none;">
+            <span class="hint mono">page</span>
+            <select id="pageB"></select>
+          </span>
+        </label>
+        <div class="btnrow">
+          <button class="ghost" id="swapBtn">Swap previous / current</button>
+        </div>
+      </section>
+
+      <section class="group">
+        <h2>View</h2>
+        <div class="seg" id="modeSeg">
+          <button data-mode="overlay" class="active">Overlay diff</button>
+          <button data-mode="swipe">Swipe</button>
+          <button data-mode="blink">Blink</button>
+          <button data-mode="side">Side by side</button>
+        </div>
+      </section>
+
+      <section class="group">
+        <h2>Sensitivity</h2>
+        <div class="field">
+          <span class="flabel"><span>Change threshold</span><b id="threshVal">60</b></span>
+          <input type="range" id="thresh" min="10" max="180" value="60">
+        </div>
+        <p class="hint">Lower catches faint changes and scan noise; higher shows only bold differences.</p>
+      </section>
+
+      <section class="group">
+        <button class="ghost" id="shortcutsBtn" style="width:100%;">⌨ Keyboard shortcuts</button>
+      </section>
+    </aside>
+
+    <main class="viewer">
+      <div class="toolbar" id="toolbar" style="display:none;">
+        <div class="legend" id="legendOverlay">
+          <span><span class="dot" style="background:var(--redline)"></span>Removed</span>
+          <span><span class="dot" style="background:var(--blueprint)"></span>Added</span>
+          <span><span class="dot" style="background:var(--ink-soft)"></span>Unchanged</span>
+        </div>
+        <div class="blinkbtn" id="blinkControls" style="display:none;">
+          <button class="ghost" id="blinkToggle">Pause blink</button>
+          <span class="hint mono" id="blinkLabel">showing: current</span>
+        </div>
+        <div class="zoomctl">
+          <button id="zoomOut">–</button>
+          <span class="pct" id="zoomPct">100%</span>
+          <button id="zoomIn">+</button>
+          <button id="zoomFit" title="Fit to view" style="width:auto;padding:0 8px;">Fit</button>
+        </div>
+      </div>
+      <div class="stagewrap" id="stagewrap">
+        <div class="empty" id="emptyState">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="9"/>
+            <path d="M12 3v3M12 18v3M3 12h3M18 12h3"/>
+            <path d="M8.5 8.5l7 7M15.5 8.5l-7 7" opacity=".4"/>
+          </svg>
+          <h3>Load two versions of a plan</h3>
+          <p>Drop the previous and current PDF in the sidebar. Same sheet, any revision — Redline lines up the pages and marks what moved, what's new, and what's gone.</p>
+        </div>
+        <div id="stage"></div>
+        <div class="loupe" id="loupe"></div>
+      </div>
+    </main>
+  </main>
+</div>
+
+<div class="modal-overlay" id="shortcutsModal" style="display:none;">
+  <div class="modal-card">
+    <h3>Keyboard shortcuts</h3>
+    <dl class="shortcut-list">
+      <div><dt>1 – 4</dt><dd>switch view</dd></div>
+      <div><dt>space</dt><dd>magnifier (in Overlay) / blink play-pause (in Blink)</dd></div>
+      <div><dt>← →</dt><dd>move swipe divider (in Swipe)</dd></div>
+      <div><dt>+ / −</dt><dd>zoom in / out</dd></div>
+      <div><dt>0</dt><dd>fit to view</dd></div>
+      <div><dt>e</dt><dd>export PDF</dd></div>
+      <div><dt>?</dt><dd>toggle this panel</dd></div>
+    </dl>
+    <button class="ghost" id="closeShortcuts" style="width:100%;">Close</button>
+  </div>
+</div>
+
+<script>
+(function(){
+  pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+  const state = {
+    A: { pdf: null, pageNum: 1, numPages: 0, canvas: null, name: '' },
+    B: { pdf: null, pageNum: 1, numPages: 0, canvas: null, name: '' },
+    targetWidth: 2600, // always render at high quality
+    mode: 'overlay',
+    threshold: 60,
+    zoom: 1, panX: 40, panY: 40,
+    alignedB: null,
+    diffCanvas: null,
+    diffDataUrl: null,
+    swipePct: 0.5,
+    magnifierOn: false,
+    blinkOn: true,
+    blinkShowing: 'B',
+    blinkTimer: null,
+  };
+
+  const $ = (id) => document.getElementById(id);
+  const stagewrap = $('stagewrap'), stage = $('stage'), emptyState = $('emptyState'), toolbar = $('toolbar');
+
+  // ---------- PDF loading ----------
+  async function handleFile(file, slot){
+    if(!file) return;
+    try{
+      const buf = await file.arrayBuffer();
+      const pdf = await pdfjsLib.getDocument({data: buf}).promise;
+      state[slot].pdf = pdf;
+      state[slot].numPages = pdf.numPages;
+      state[slot].pageNum = 1;
+      state[slot].name = file.name;
+      $('name' + slot).textContent = file.name;
+      const sel = $('page' + slot);
+      sel.innerHTML = '';
+      for(let i=1;i<=pdf.numPages;i++){
+        const opt = document.createElement('option');
+        opt.value = i; opt.textContent = i;
+        sel.appendChild(opt);
+      }
+      $('pagerow' + slot).style.display = pdf.numPages > 1 ? 'flex' : (pdf.numPages===1 ? 'none' : 'none');
+      if(pdf.numPages > 1) $('pagerow' + slot).style.display = 'flex';
+      await renderSlot(slot);
+      afterPlansChanged();
+    }catch(err){
+      $('name' + slot).textContent = 'Could not read PDF';
+      console.error(err);
+    }
+  }
+
+  async function renderSlot(slot){
+    const s = state[slot];
+    if(!s.pdf) return;
+    const page = await s.pdf.getPage(s.pageNum);
+    const vp1 = page.getViewport({scale:1});
+    const scale = state.targetWidth / vp1.width;
+    const vp = page.getViewport({scale});
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.max(1, Math.round(vp.width));
+    canvas.height = Math.max(1, Math.round(vp.height));
+    const ctx = canvas.getContext('2d', {willReadFrequently:true});
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+    await page.render({canvasContext: ctx, viewport: vp}).promise;
+    s.canvas = canvas;
+  }
+
+  function afterPlansChanged(){
+    toolbar.style.display = (state.A.canvas || state.B.canvas) ? 'flex' : 'none';
+    emptyState.style.display = (state.A.canvas && state.B.canvas) ? 'none' : 'flex';
+    $('downloadBtn').style.display = state.mode === 'overlay' && state.A.canvas && state.B.canvas ? 'inline-block' : 'none';
+    if(state.A.canvas && state.B.canvas){
+      recompute();
+      fitToView();
+    } else {
+      renderView();
+    }
+  }
+
+  // ---------- geometry / diff ----------
+  function computeAlignedB(){
+    if(!state.A.canvas || !state.B.canvas) return null;
+    const w = state.A.canvas.width, h = state.A.canvas.height;
+    const out = document.createElement('canvas');
+    out.width = w; out.height = h;
+    const ctx = out.getContext('2d', {willReadFrequently:true});
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0,0,w,h);
+    ctx.drawImage(state.B.canvas, 0, 0);
+    return out;
+  }
+
+  function computeDiff(alignedB){
+    const w = state.A.canvas.width, h = state.A.canvas.height;
+    const ctxA = state.A.canvas.getContext('2d', {willReadFrequently:true});
+    const ctxB = alignedB.getContext('2d', {willReadFrequently:true});
+    const dataA = ctxA.getImageData(0,0,w,h).data;
+    const dataB = ctxB.getImageData(0,0,w,h).data;
+    const out = document.createElement('canvas');
+    out.width = w; out.height = h;
+    const outCtx = out.getContext('2d');
+    const outImg = outCtx.createImageData(w,h);
+    const od = outImg.data;
+    const th = state.threshold;
+    const removed = [178,59,46], added = [44,94,138], unchanged=[52,56,52], bg=[247,245,239];
+    for(let i=0;i<dataA.length;i+=4){
+      const lumA = 0.299*dataA[i]+0.587*dataA[i+1]+0.114*dataA[i+2];
+      const lumB = 0.299*dataB[i]+0.587*dataB[i+1]+0.114*dataB[i+2];
+      const inkA = (255-lumA) > th;
+      const inkB = (255-lumB) > th;
+      let c;
+      if(inkA && inkB) c = unchanged;
+      else if(inkA && !inkB) c = removed;
+      else if(!inkA && inkB) c = added;
+      else c = bg;
+      od[i]=c[0]; od[i+1]=c[1]; od[i+2]=c[2]; od[i+3]=255;
+    }
+    outCtx.putImageData(outImg,0,0);
+    return out;
+  }
+
+  let recomputeQueued = false;
+  function recompute(){
+    if(!state.A.canvas || !state.B.canvas) return;
+    if(recomputeQueued) return;
+    recomputeQueued = true;
+    requestAnimationFrame(() => {
+      recomputeQueued = false;
+      state.alignedB = computeAlignedB();
+      state.diffCanvas = computeDiff(state.alignedB);
+      state.diffDataUrl = null;
+      renderView();
+    });
+  }
+
+  // ---------- view rendering ----------
+  function styledCanvas(src){
+    return src;
+  }
+
+  function renderView(){
+    stage.innerHTML = '';
+    swipeRefs = null;
+    if(!(state.A.canvas && state.B.canvas)){
+      if(state.A.canvas || state.B.canvas){
+        const only = state.A.canvas || state.B.canvas;
+        stage.appendChild(only);
+      }
+      applyStageTransform();
+      return;
+    }
+    $('blinkControls').style.display = state.mode === 'blink' ? 'flex' : 'none';
+    $('downloadBtn').style.display = state.mode === 'overlay' ? 'inline-block' : 'none';
+
+    // Blink mode repurposes these same canvas elements with absolute
+    // positioning + opacity toggling. Reset that before every render so a
+    // leftover state from Blink can't break Swipe/Side-by-side layout.
+    [state.A.canvas, state.alignedB].forEach(cv => {
+      if(!cv) return;
+      cv.style.position = '';
+      cv.style.top = '';
+      cv.style.left = '';
+      cv.style.opacity = '';
+    });
+
+    if(state.mode === 'overlay'){
+      if(state.diffCanvas) stage.appendChild(state.diffCanvas);
+    } else if(state.mode === 'side'){
+      const wrap = document.createElement('div');
+      wrap.className = 'sidebyside';
+      wrap.style.transform = 'none';
+      const figA = document.createElement('figure');
+      figA.appendChild(state.A.canvas);
+      const capA = document.createElement('figcaption'); capA.textContent = 'previous';
+      figA.appendChild(capA);
+      const figB = document.createElement('figure');
+      figB.appendChild(state.alignedB);
+      const capB = document.createElement('figcaption'); capB.textContent = 'current';
+      figB.appendChild(capB);
+      wrap.appendChild(figA); wrap.appendChild(figB);
+      stage.appendChild(wrap);
+    } else if(state.mode === 'swipe'){
+      const wrap = document.createElement('div');
+      wrap.className = 'swipewrap';
+      const w = state.A.canvas.width;
+      wrap.style.width = w + 'px';
+      wrap.appendChild(state.A.canvas);
+      const topWrap = document.createElement('div');
+      topWrap.className = 'swipe-top';
+      topWrap.style.overflow = 'hidden';
+      topWrap.style.width = (w * state.swipePct) + 'px';
+      topWrap.style.height = state.A.canvas.height + 'px';
+      topWrap.appendChild(state.alignedB);
+      wrap.appendChild(topWrap);
+      const handle = document.createElement('div');
+      handle.className = 'swipe-handle';
+      handle.style.left = (state.swipePct * 100) + '%';
+      wrap.appendChild(handle);
+
+      swipeRefs = { wrap, topWrap, handle, w };
+
+      let dragging = false;
+      const setPct = (clientX) => {
+        const rect = wrap.getBoundingClientRect();
+        let pct = (clientX - rect.left) / rect.width;
+        setSwipePct(pct);
+      };
+      handle.addEventListener('pointerdown', (e) => { dragging = true; e.stopPropagation(); handle.setPointerCapture(e.pointerId); });
+      handle.addEventListener('pointermove', (e) => { if(dragging){ setPct(e.clientX); e.stopPropagation(); } });
+      handle.addEventListener('pointerup', (e) => { dragging = false; });
+      stage.appendChild(wrap);
+    } else if(state.mode === 'blink'){
+      const holder = document.createElement('div');
+      holder.style.position = 'relative';
+      const a = state.A.canvas, b = state.alignedB;
+      a.style.position = 'absolute'; a.style.top = 0; a.style.left = 0;
+      b.style.position = 'absolute'; b.style.top = 0; b.style.left = 0;
+      holder.style.width = a.width + 'px';
+      holder.style.height = a.height + 'px';
+      holder.appendChild(a); holder.appendChild(b);
+      stage.appendChild(holder);
+      updateBlinkVisibility();
+    }
+    applyStageTransform();
+  }
+
+  function updateBlinkVisibility(){
+    if(state.mode !== 'blink' || !state.A.canvas || !state.alignedB) return;
+    const showB = state.blinkShowing === 'B';
+    state.A.canvas.style.opacity = showB ? '0' : '1';
+    state.alignedB.style.opacity = showB ? '1' : '0';
+    $('blinkLabel').textContent = 'showing: ' + (showB ? 'current' : 'previous');
+  }
+
+  function startBlink(){
+    stopBlink();
+    state.blinkTimer = setInterval(() => {
+      state.blinkShowing = state.blinkShowing === 'B' ? 'A' : 'B';
+      updateBlinkVisibility();
+    }, 700);
+  }
+  function stopBlink(){
+    if(state.blinkTimer) clearInterval(state.blinkTimer);
+    state.blinkTimer = null;
+  }
+
+  // ---------- zoom / pan ----------
+  function applyStageTransform(){
+    stage.style.transform = `translate(${state.panX}px, ${state.panY}px) scale(${state.zoom})`;
+    $('zoomPct').textContent = Math.round(state.zoom*100) + '%';
+  }
+  function contentSize(){
+    const cw = state.A.canvas.width, ch = state.A.canvas.height;
+    if(state.mode === 'side'){
+      // two canvases + gap(16) + padding(20 each side) + caption row
+      return { w: cw*2 + 16 + 40, h: ch + 60 };
+    }
+    return { w: cw, h: ch };
+  }
+  function fitToView(){
+    if(!state.A.canvas) return;
+    const rect = stagewrap.getBoundingClientRect();
+    const { w: cw, h: ch } = contentSize();
+    const pad = 40;
+    const z = Math.min((rect.width-pad*2)/cw, (rect.height-pad*2)/ch, 1.4);
+    state.zoom = Math.max(0.1, z);
+    state.panX = (rect.width - cw*state.zoom)/2;
+    state.panY = (rect.height - ch*state.zoom)/2;
+    applyStageTransform();
+  }
+
+  let panDrag = null;
+  let swipeRefs = null;
+
+  function setSwipePct(pct){
+    pct = Math.max(0, Math.min(1, pct));
+    state.swipePct = pct;
+    if(swipeRefs){
+      swipeRefs.topWrap.style.width = (swipeRefs.w * pct) + 'px';
+      swipeRefs.handle.style.left = (pct * 100) + '%';
+    }
+  }
+
+  stagewrap.addEventListener('pointerdown', (e) => {
+    if(e.target.closest('.swipe-handle')) return;
+    panDrag = { x: e.clientX, y: e.clientY, panX: state.panX, panY: state.panY };
+    stagewrap.classList.add('panning');
+    hideLoupe();
+  });
+  window.addEventListener('pointermove', (e) => {
+    if(!panDrag) return;
+    state.panX = panDrag.panX + (e.clientX - panDrag.x);
+    state.panY = panDrag.panY + (e.clientY - panDrag.y);
+    applyStageTransform();
+  });
+  window.addEventListener('pointerup', () => { panDrag = null; stagewrap.classList.remove('panning'); });
+
+  stagewrap.addEventListener('wheel', (e) => {
+    if(!state.A.canvas) return;
+    e.preventDefault();
+    const rect = stagewrap.getBoundingClientRect();
+    const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+    const prevZoom = state.zoom;
+    const delta = -e.deltaY * 0.0015;
+    let newZoom = prevZoom * (1 + delta);
+    newZoom = Math.max(0.1, Math.min(6, newZoom));
+    const wx = (mx - state.panX) / prevZoom;
+    const wy = (my - state.panY) / prevZoom;
+    state.panX = mx - wx*newZoom;
+    state.panY = my - wy*newZoom;
+    state.zoom = newZoom;
+    applyStageTransform();
+  }, { passive: false });
+
+  $('zoomIn').addEventListener('click', () => { state.zoom = Math.min(6, state.zoom*1.2); applyStageTransform(); });
+  $('zoomOut').addEventListener('click', () => { state.zoom = Math.max(0.1, state.zoom/1.2); applyStageTransform(); });
+  $('zoomFit').addEventListener('click', fitToView);
+
+  // ---------- magnifier loupe (Overlay mode only) ----------
+  const LOUPE_SIZE = 200, LOUPE_ZOOM = 2;
+  const loupeEl = $('loupe');
+  function ensureDiffDataUrl(){
+    if(!state.diffCanvas) return null;
+    if(!state.diffDataUrl) state.diffDataUrl = state.diffCanvas.toDataURL('image/png');
+    return state.diffDataUrl;
+  }
+  function hideLoupe(){ loupeEl.style.display = 'none'; }
+  function toggleMagnifier(){
+    state.magnifierOn = !state.magnifierOn;
+    stagewrap.classList.toggle('magnify-on', state.magnifierOn);
+    if(!state.magnifierOn) hideLoupe();
+  }
+  function updateLoupe(e){
+    if(!state.magnifierOn || panDrag || state.mode !== 'overlay' || !state.diffCanvas){ hideLoupe(); return; }
+    const url = ensureDiffDataUrl();
+    if(!url){ hideLoupe(); return; }
+    const rect = stagewrap.getBoundingClientRect();
+    const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+    const cx = (mx - state.panX) / state.zoom;
+    const cy = (my - state.panY) / state.zoom;
+    if(cx < 0 || cy < 0 || cx > state.diffCanvas.width || cy > state.diffCanvas.height){ hideLoupe(); return; }
+    loupeEl.style.backgroundImage = `url(${url})`;
+    loupeEl.style.backgroundSize = (state.diffCanvas.width * LOUPE_ZOOM) + 'px ' + (state.diffCanvas.height * LOUPE_ZOOM) + 'px';
+    loupeEl.style.backgroundPosition = (-(cx * LOUPE_ZOOM - LOUPE_SIZE/2)) + 'px ' + (-(cy * LOUPE_ZOOM - LOUPE_SIZE/2)) + 'px';
+    loupeEl.style.left = (mx - LOUPE_SIZE/2) + 'px';
+    loupeEl.style.top = (my - LOUPE_SIZE/2) + 'px';
+    loupeEl.style.display = 'block';
+  }
+  stagewrap.addEventListener('pointermove', updateLoupe);
+  stagewrap.addEventListener('pointerleave', hideLoupe);
+
+  // ---------- wiring: files ----------
+  ['A','B'].forEach(slot => {
+    const input = $('file' + slot);
+    const drop = $('drop' + slot);
+    input.addEventListener('change', (e) => handleFile(e.target.files[0], slot));
+    ['dragenter','dragover'].forEach(ev => drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.add('drag'); }));
+    ['dragleave','drop'].forEach(ev => drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.remove('drag'); }));
+    drop.addEventListener('drop', (e) => {
+      const f = e.dataTransfer.files && e.dataTransfer.files[0];
+      if(f) handleFile(f, slot);
+    });
+    $('page' + slot).addEventListener('change', async (e) => {
+      state[slot].pageNum = parseInt(e.target.value, 10);
+      await renderSlot(slot);
+      afterPlansChanged();
+    });
+  });
+
+  $('swapBtn').addEventListener('click', async () => {
+    const tmp = state.A; state.A = state.B; state.B = tmp;
+    ['nameA','nameB'].forEach(id => {});
+    $('nameA').textContent = state.A.name || 'Drop or choose PDF';
+    $('nameB').textContent = state.B.name || 'Drop or choose PDF';
+    const selA = $('pageA'), selB = $('pageB');
+    function rebuildSelect(sel, s){
+      sel.innerHTML = '';
+      for(let i=1;i<=s.numPages;i++){
+        const opt = document.createElement('option');
+        opt.value = i; opt.textContent = i;
+        if(i === s.pageNum) opt.selected = true;
+        sel.appendChild(opt);
+      }
+    }
+    rebuildSelect(selA, state.A);
+    rebuildSelect(selB, state.B);
+    $('pagerowA').style.display = state.A.numPages > 1 ? 'flex' : 'none';
+    $('pagerowB').style.display = state.B.numPages > 1 ? 'flex' : 'none';
+    afterPlansChanged();
+  });
+
+  // ---------- wiring: mode (with crossfade) ----------
+  function updateModeButtons(){
+    document.querySelectorAll('#modeSeg button').forEach(b => {
+      b.classList.toggle('active', b.dataset.mode === state.mode);
+    });
+  }
+
+  function setMode(mode){
+    if(state.mode === mode || !['overlay','swipe','blink','side'].includes(mode)) return;
+    hideLoupe();
+    state.mode = mode;
+    updateModeButtons();
+    stopBlink();
+    if(state.mode === 'blink' && state.blinkOn) startBlink();
+    renderView();
+  }
+
+  document.querySelectorAll('#modeSeg button').forEach(btn => {
+    btn.addEventListener('click', () => setMode(btn.dataset.mode));
+  });
+
+  function toggleBlink(){
+    state.blinkOn = !state.blinkOn;
+    $('blinkToggle').textContent = state.blinkOn ? 'Pause blink' : 'Resume blink';
+    if(state.blinkOn) startBlink(); else stopBlink();
+  }
+  $('blinkToggle').addEventListener('click', toggleBlink);
+
+  // ---------- wiring: sensitivity ----------
+  $('thresh').addEventListener('input', () => {
+    const v = parseFloat($('thresh').value);
+    state.threshold = v;
+    $('threshVal').textContent = Math.round(v);
+    recompute();
+  });
+
+  window.addEventListener('resize', () => { if(state.A.canvas && state.B.canvas) fitToView(); });
+
+  // ---------- keyboard shortcuts ----------
+  const shortcutsModal = $('shortcutsModal');
+  function closeShortcuts(){ shortcutsModal.style.display = 'none'; }
+  function toggleShortcuts(){
+    shortcutsModal.style.display = (shortcutsModal.style.display === 'flex') ? 'none' : 'flex';
+  }
+  $('shortcutsBtn').addEventListener('click', toggleShortcuts);
+  $('closeShortcuts').addEventListener('click', closeShortcuts);
+  shortcutsModal.addEventListener('click', (e) => { if(e.target === shortcutsModal) closeShortcuts(); });
+
+  const MODE_KEYS = { '1':'overlay', '2':'swipe', '3':'blink', '4':'side' };
+  window.addEventListener('keydown', (e) => {
+    if(e.key === 'Escape' && shortcutsModal.style.display === 'flex'){ closeShortcuts(); return; }
+    if(e.key === '?'){ e.preventDefault(); toggleShortcuts(); return; }
+    if(shortcutsModal.style.display === 'flex') return;
+
+    const tag = document.activeElement && document.activeElement.tagName;
+    if(['INPUT','SELECT','TEXTAREA'].includes(tag)) return;
+    if(e.metaKey || e.ctrlKey || e.altKey) return;
+    if(!state.A.canvas || !state.B.canvas) return;
+
+    if(MODE_KEYS[e.key]){ setMode(MODE_KEYS[e.key]); return; }
+    if(e.key === ' '){
+      e.preventDefault();
+      if(state.mode === 'blink') toggleBlink();
+      else if(state.mode === 'overlay') toggleMagnifier();
+      return;
+    }
+    if(e.key === '+' || e.key === '='){ state.zoom = Math.min(6, state.zoom*1.2); applyStageTransform(); return; }
+    if(e.key === '-' || e.key === '_'){ state.zoom = Math.max(0.1, state.zoom/1.2); applyStageTransform(); return; }
+    if(e.key === '0'){ fitToView(); return; }
+    if(e.key === 'ArrowLeft' && state.mode === 'swipe'){ e.preventDefault(); setSwipePct(state.swipePct - 0.03); return; }
+    if(e.key === 'ArrowRight' && state.mode === 'swipe'){ e.preventDefault(); setSwipePct(state.swipePct + 0.03); return; }
+    if(e.key === 'e' || e.key === 'E'){ $('downloadBtn').click(); return; }
+  });
+
+  // ---------- export ----------
+  function buildExportCanvas(){
+    const src = state.diffCanvas;
+    const barH = 56;
+    const out = document.createElement('canvas');
+    out.width = src.width;
+    out.height = src.height + barH;
+    const ctx = out.getContext('2d');
+
+    ctx.fillStyle = '#F6F4ED';
+    ctx.fillRect(0, 0, out.width, out.height);
+    ctx.drawImage(src, 0, 0);
+
+    const barY = src.height;
+    ctx.fillStyle = '#F6F4ED';
+    ctx.fillRect(0, barY, out.width, barH);
+    ctx.strokeStyle = '#DCD8C9';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(0, barY + 0.5);
+    ctx.lineTo(out.width, barY + 0.5);
+    ctx.stroke();
+
+    const midY = barY + barH / 2;
+    const items = [
+      { color: '#B23B2E', label: 'Removed' },
+      { color: '#2C5E8A', label: 'Added' },
+      { color: '#34383A', label: 'Unchanged' },
+    ];
+    let x = 22;
+    ctx.textBaseline = 'middle';
+    ctx.font = '600 15px "IBM Plex Sans", Arial, sans-serif';
+    items.forEach(item => {
+      ctx.fillStyle = item.color;
+      ctx.beginPath();
+      ctx.arc(x + 7, midY, 7, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#23262B';
+      ctx.fillText(item.label, x + 22, midY);
+      x += ctx.measureText(item.label).width + 55;
+    });
+
+    const nameA = state.A.name || 'previous';
+    const nameB = state.B.name || 'current';
+    ctx.font = '500 12px "IBM Plex Mono", monospace';
+    ctx.textAlign = 'right';
+    ctx.fillStyle = '#666B62';
+    ctx.fillText(`${nameA}  →  ${nameB}`, out.width - 20, midY);
+    ctx.textAlign = 'left';
+
+    return out;
+  }
+
+  $('downloadBtn').addEventListener('click', async () => {
+    console.log('[Redline] export clicked. diffCanvas ready?', !!state.diffCanvas);
+    if(!state.diffCanvas){
+      alert('No diff to export yet — load both plans and switch to Overlay diff mode first.');
+      return;
+    }
+    try{
+      if(document.fonts && document.fonts.ready) await document.fonts.ready;
+      const exportCanvas = buildExportCanvas();
+      const imgData = exportCanvas.toDataURL('image/png');
+      const DPI = 150; // assumed source resolution, used only to size the PDF page sensibly
+      const pageW = exportCanvas.width * 72 / DPI;
+      const pageH = exportCanvas.height * 72 / DPI;
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF({
+        orientation: pageW >= pageH ? 'landscape' : 'portrait',
+        unit: 'pt',
+        format: [pageW, pageH],
+      });
+      doc.addImage(imgData, 'PNG', 0, 0, pageW, pageH);
+      doc.save('redline-diff.pdf');
+      console.log('[Redline] PDF export triggered');
+    }catch(err){
+      console.error('[Redline] export error:', err);
+      alert('Export failed: ' + err.message);
+    }
+  });
+
+  window.addEventListener('error', (e) => {
+    console.error('[Redline] uncaught error:', e.message, e.filename, e.lineno);
+  });
+  console.log('[Redline] script initialized OK');
+
+})();
+</script>
+</body>
+</html>
